@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
+  <title>OpenCV 流水线实验室 · 离线教学版</title>
+  <link rel="stylesheet" href="./pipeline.css">
+  <link rel="stylesheet" href="./pipeline-stage.css">
+</head>
+<body data-cv-ready="false" data-image-ready="false" data-processing="false">
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-block">
+        <div class="brand-mark" aria-hidden="true">CV</div>
+        <div class="brand-copy">
+          <h1>OpenCV 流水线实验室</h1>
+          <p>离线教学版 · 把多个视觉步骤串起来，查看每一步输入与输出</p>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="status-pill" id="cvStatus" data-state="loading" role="status" aria-live="polite">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="cvStatusText">正在加载 OpenCV…</span>
+        </div>
+        <a class="link-button" href="./index.html">单步实验</a>
+        <button class="button soft" id="sampleButton" type="button">打开内置示例</button>
+        <button class="button" id="topUploadButton" type="button">选择图片</button>
+        <button class="button primary" id="runButton" type="button" disabled>运行流水线</button>
+        <button class="button" id="downloadButton" type="button" disabled>下载结果</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="panel side-panel builder-panel" aria-label="流水线构建器">
+        <div class="panel-header">
+          <div><h2>流水线构建器</h2><p>添加步骤后按从上到下的顺序执行</p></div>
+        </div>
+        <div class="panel-body">
+          <input class="sr-only" id="fileInput" type="file" accept="image/*">
+          <input class="sr-only" id="pipelineJsonInput" type="file" accept="application/json,.json">
+          <div class="upload-zone" id="uploadZone" role="button" tabindex="0" aria-label="选择或拖入图片">
+            <div>
+              <div class="upload-icon" aria-hidden="true">＋</div>
+              <strong>点击选择或拖入图片</strong>
+              <span>图片只在浏览器内存中处理</span>
+            </div>
+          </div>
+          <p class="privacy-note"><span aria-hidden="true">◉</span><span>完全离线运行，不会上传图片或流水线配置。</span></p>
+
+          <div class="section-label">快速预设</div>
+          <div class="preset-row">
+            <select id="presetSelect" aria-label="选择流水线预设">
+              <option value="lineTracking">巡线提取</option>
+              <option value="edgeDetection">通用边缘</option>
+              <option value="binaryCleanup">二值清理</option>
+            </select>
+            <button class="button small soft" id="applyPresetButton" type="button">应用</button>
+          </div>
+
+          <div class="section-label">添加处理步骤</div>
+          <div class="operation-palette" id="operationPalette" aria-label="可添加的 OpenCV 操作"></div>
+
+          <div class="section-label">当前流水线</div>
+          <div class="pipeline-toolbar">
+            <span class="pipeline-count" id="pipelineCount">0 个步骤</span>
+            <button class="button small danger" id="clearPipelineButton" type="button">清空步骤</button>
+          </div>
+          <div class="pipeline-list" id="pipelineList" aria-live="polite"></div>
+        </div>
+      </aside>
+
+      <section class="panel stage-panel" aria-label="图片与中间结果">
+        <div class="stage-header">
+          <div><h2>输入、输出与中间结果</h2><p id="imageName">尚未选择图片</p></div>
+          <div class="stage-badges">
+            <span class="mini-badge" id="sourceBadge">输入 — × —</span>
+            <span class="mini-badge" id="resultBadge">输出 —</span>
+            <span class="mini-badge" id="runBadge">等待图片</span>
+          </div>
+        </div>
+        <div class="stage-body">
+          <div class="canvas-grid">
+            <article class="canvas-card" id="sourceCard">
+              <div class="canvas-card-header"><strong>原始图片</strong><span class="canvas-meta" id="sourceMeta">sourceCanvas</span></div>
+              <div class="canvas-viewport">
+                <canvas id="sourceCanvas" aria-label="原始图片画布"></canvas>
+                <div class="canvas-empty"><div><strong>这里显示流水线输入</strong><span>选择图片或打开内置示例。</span></div></div>
+              </div>
+              <div class="pixel-bar"><span>鼠标像素</span><span class="pixel-readout" id="sourcePixel">x: — · y: — · RGBA: —</span></div>
+            </article>
+
+            <article class="canvas-card" id="resultCard">
+              <div class="canvas-card-header"><strong>最终结果</strong><span class="canvas-meta" id="resultMeta">resultCanvas</span></div>
+              <div class="canvas-viewport">
+                <canvas id="resultCanvas" aria-label="流水线最终结果画布"></canvas>
+                <div class="canvas-empty"><div><strong>这里显示最终输出</strong><span>流水线或参数改变后会自动重算。</span></div></div>
+                <div class="processing-overlay" id="processingOverlay" aria-hidden="true"><div class="processing-box"><span class="spinner" aria-hidden="true"></span><span>OpenCV 正在执行流水线…</span></div></div>
+              </div>
+              <div class="pixel-bar"><span>鼠标像素</span><span class="pixel-readout" id="resultPixel">x: — · y: — · RGBA: —</span></div>
+            </article>
+          </div>
+
+          <section class="preview-section" aria-labelledby="previewTitle">
+            <div class="section-heading"><h3 id="previewTitle">每一步中间结果</h3><span class="mini-badge" id="previewCount">0 张</span></div>
+            <div class="preview-grid" id="previewGrid"></div>
+          </section>
+          <div class="error-banner" id="errorBanner" role="alert"></div>
+        </div>
+      </section>
+
+      <aside class="panel side-panel editor-panel" aria-label="参数与代码">
+        <div class="panel-header">
+          <div><h2>步骤参数与导出</h2><p>选择左侧步骤进行编辑</p></div>
+        </div>
+        <div class="panel-body">
+          <div>
+            <div class="section-label">当前步骤</div>
+            <div id="parameterEditor" aria-live="polite"></div>
+            <div class="run-summary">
+              <div class="metric-card"><span>总耗时</span><strong id="metricTime">—</strong></div>
+              <div class="metric-card"><span>启用步骤</span><strong id="metricSteps">—</strong></div>
+              <div class="metric-card"><span>输出矩阵</span><strong id="metricShape">—</strong></div>
+              <div class="metric-card"><span>轮廓数量</span><strong id="metricContours">—</strong></div>
+            </div>
+            <div class="file-actions">
+              <button class="button small" id="exportJsonButton" type="button">导出流水线 JSON</button>
+              <button class="button small" id="importJsonButton" type="button">导入流水线 JSON</button>
+            </div>
+          </div>
+
+          <div>
+            <div class="section-label">等价 OpenCV.js 代码</div>
+            <div class="code-shell">
+              <div class="code-toolbar">
+                <span>JavaScript · OpenCV.js</span>
+                <div class="code-toolbar-actions">
+                  <button id="copyCodeButton" type="button">复制代码</button>
+                </div>
+              </div>
+              <pre><code id="exportCode"></code></pre>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+
+  <script>window.__opencvScriptError = false;</script>
+  <script src="./opencv.js" onerror="window.__opencvScriptError = true"></script>
+  <script src="./pipeline-mode.js"></script>
+  <script src="./pipeline-operations.js"></script>
+  <script src="./pipeline-editor.js"></script>
+  <script src="./pipeline-app.js"></script>
+</body>
+</html>
