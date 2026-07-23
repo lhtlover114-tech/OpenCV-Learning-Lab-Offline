@@ -1,0 +1,9 @@
+{
+  "name": "opencv-learning-lab-offline",
+  "private": true,
+  "version": "1.1.0",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "check": "node --check pipeline-mode.js && node --check pipeline-operations.js && node --check pipeline-editor.js && node --check pipeline-app.js && npm test"
+  }
+}
